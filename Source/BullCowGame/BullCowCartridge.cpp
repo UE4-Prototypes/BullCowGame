@@ -7,25 +7,32 @@ void UBullCowCartridge::BeginPlay() // When the game starts
 {
     Super::BeginPlay();
 
-    TArray<FString> Words;
-    const FString WordListPath = FPaths::ProjectContentDir() / TEXT("WordList/HiddenWordList.txt");
-    FFileHelper::LoadFileToStringArray(Words, *WordListPath);
-    Isograms = GetValidWords(Words);
+    {
+        TArray<FString> Words;
+        const FString WordListPath = FPaths::ProjectContentDir() / TEXT("WordList/HiddenWordList.txt");
+        FFileHelper::LoadFileToStringArray(Words, *WordListPath);
+        Isograms = GetValidWords(Words);
+    }
 
     SetupGame();
 }
 
 void UBullCowCartridge::OnInput(const FString& Input) // When the player hits enter
 {
+    ClearScreen();   
     if (bGameOver)
     {
         ClearScreen();
-        SetupGame();
+        if (PlayAgain(Input))
+        {
+            SetupGame();
+        }
     }
     else
     {
         ProcessGuess(Input);
     }
+    PrintLine(TEXT("Guess the %i letter word!"), HiddenWord.Len());
 }
 
 void UBullCowCartridge::SetupGame()
@@ -34,7 +41,7 @@ void UBullCowCartridge::SetupGame()
     PrintLine(TEXT("Welcome to Bulls Cows!"));
 
     HiddenWord = Isograms[FMath::RandRange(0, (Isograms.Num() - 1))];
-    Lives = HiddenWord.Len();
+    Lives = HiddenWord.Len() * 2;
     bGameOver = false;
 
     PrintLine(TEXT("The HiddenWord is: %s."), *HiddenWord); // Debug Line
@@ -48,7 +55,7 @@ void UBullCowCartridge::SetupGame()
 void UBullCowCartridge::EndGame()
 {
     bGameOver = true;
-    PrintLine(TEXT("\nPress enter to play again..."));
+    PrintLine(TEXT("\nPress enter to continue..."));
 }
 
 void UBullCowCartridge::ProcessGuess(const FString& Guess)
@@ -87,6 +94,10 @@ void UBullCowCartridge::ProcessGuess(const FString& Guess)
     }
     
     // Show the player Bulls and Cows
+    FBullCowCount Count = GetBullCows(Guess);
+    
+    PrintLine(TEXT("You have %i Bulls and %i Cows"), Count.Bulls, Count.Cows);
+
     PrintLine(TEXT("\nGuess again, you have %i lives remaining."), Lives);
 }
 
@@ -118,4 +129,38 @@ TArray<FString> UBullCowCartridge::GetValidWords(const TArray<FString>& WordList
         }
     }
     return ValidWords;
+}
+
+FBullCowCount UBullCowCartridge::GetBullCows(const FString& Guess) const
+{
+    FBullCowCount Count;
+    for (int32 GuessIndex = 0; GuessIndex < Guess.Len(); GuessIndex++)
+    {
+        if (Guess[GuessIndex] == HiddenWord[GuessIndex])
+        {
+            Count.Bulls++;
+            continue;
+        }
+
+        for (int32 HiddenIndex = 0; HiddenIndex < HiddenWord.Len(); HiddenIndex++)
+        {
+            if (Guess[GuessIndex] == HiddenWord[HiddenIndex])
+            {
+                Count.Cows++;
+                break;
+            }
+        }
+    }
+    return Count;
+}
+
+bool UBullCowCartridge::PlayAgain(const FString& Choice) const
+{
+    PrintLine(TEXT("Do you want to play again (yes/no)?"));
+
+    if (Choice == TEXT("yes"))
+    {
+        return true;
+    }
+    return false;
 }
